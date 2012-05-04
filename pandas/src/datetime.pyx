@@ -763,9 +763,6 @@ try:
 except:
     have_pytz = False
 
-trans_cache = {}
-utc_offset_cache = {}
-
 def tz_convert(ndarray[int64_t] vals, object tz1, object tz2):
     cdef:
         ndarray[int64_t] utc_dates, result, trans, deltas
@@ -814,7 +811,7 @@ def tz_convert(ndarray[int64_t] vals, object tz1, object tz2):
 trans_cache = {}
 utc_offset_cache = {}
 
-def _get_transitions(object tz):
+def _get_transitions(tz):
     """
     Get UTC times of DST transitions
     """
@@ -823,7 +820,7 @@ def _get_transitions(object tz):
         trans_cache[tz] = arr.view('i8')
     return trans_cache[tz]
 
-def _get_deltas(object tz):
+def _get_deltas(tz):
     """
     Get UTC offsets in microseconds corresponding to DST transitions
     """
@@ -835,7 +832,7 @@ cdef double total_seconds(object td): # Python 2.6 compat
     return ((td.microseconds + (td.seconds + td.days * 24 * 3600) * 10**6) //
             10**6)
 
-cdef ndarray _unbox_utcoffsets(object transinfo):
+cpdef ndarray _unbox_utcoffsets(object transinfo):
     cdef:
         Py_ssize_t i, sz
         ndarray[int64_t] arr
@@ -849,7 +846,7 @@ cdef ndarray _unbox_utcoffsets(object transinfo):
     return arr
 
 
-def tz_localize(ndarray[int64_t] vals, object tz):
+def tz_localize_check(ndarray[int64_t] vals, object tz):
     """
     Localize tzinfo-naive DateRange to given time zone (using pytz). If
     there are ambiguities in the values, raise AmbiguousTimeError.
@@ -867,7 +864,7 @@ def tz_localize(ndarray[int64_t] vals, object tz):
         raise Exception("Could not find pytz module")
 
     if tz == pytz.utc or tz is None:
-        return vals
+        return
 
     trans = _get_transitions(tz)
     deltas = _get_deltas(tz)
@@ -889,8 +886,6 @@ def tz_localize(ndarray[int64_t] vals, object tz):
         if dst_start <= v and v <= dst_end:
             msg = "Cannot localize, ambiguous time %s found" % Timestamp(v)
             raise pytz.AmbiguousTimeError(msg)
-
-    return vals
 
 
 # Accessors
