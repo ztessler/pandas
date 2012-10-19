@@ -10,8 +10,7 @@ import os
 import numpy as np
 from numpy.testing import assert_array_equal
 
-from pandas.core.categorical import Factor
-from pandas.core.index import Index, Int64Index, MultiIndex
+from pandas.core.index import Index, Int64Index, MultiIndex, RangeIndex
 from pandas.util.testing import assert_almost_equal
 from pandas.util import py3compat
 import pandas.core.common as com
@@ -847,6 +846,156 @@ class TestInt64Index(unittest.TestCase):
         df = DataFrame(range(3), index=index)
         repr(s)
         repr(df)
+
+
+class TestRangeIndex(unittest.TestCase):
+
+    def test_constructor(self):
+        pass
+
+    def test_repr(self):
+        index = RangeIndex(0, 20, 1)
+        result = repr(index)
+        exp = 'RangeIndex(0, 20)'
+        self.assertEqual(result, exp)
+
+        index = RangeIndex(0, 20, 3)
+        result = repr(index)
+        exp = 'RangeIndex(0, 20, step=3)'
+        self.assertEqual(result, exp)
+
+    def test_len(self):
+        for i in range(20):
+            index = RangeIndex(0, i, 3)
+            self.assertEqual(len(index), len(list(range(0, i, 3))))
+
+    def test_values(self):
+        index = RangeIndex(1000)
+
+        values = index.values
+        expected = np.arange(1000)
+        assert_almost_equal(values, expected)
+
+    def test_getitem(self):
+        index = RangeIndex(0, 20, 2)
+
+        self.assertEqual(index[4], 8)
+        self.assertEqual(index[-1], 18)
+
+    def test_fancy_index(self):
+        index = RangeIndex(0, 20, 2)
+        result = index[[4, 1, 3, -1]]
+        expected = np.array([8, 2, 6, 18])
+        assert_almost_equal(result, expected)
+
+    def test_boolean_index(self):
+        index = RangeIndex(0, 20, 2)
+
+        mask = np.ones(len(index), dtype=bool)
+        mask[::2] = False
+
+        result = index[mask]
+        exp = index.values[mask]
+        assert_almost_equal(result, exp)
+
+    def test_take(self):
+        index = RangeIndex(0, 20, 2)
+        result = index.take([4, 1, 3, -1])
+        expected = np.array([8, 2, 6, 18])
+        assert_almost_equal(result, expected)
+
+    def test_slice(self):
+        index = RangeIndex(5, 20, name='foo')
+
+        result = index[2:]
+        self.assertTrue(result.equals(RangeIndex(7, 20)))
+        self.assertTrue(result.name == 'foo')
+
+        result = index[:7]
+        self.assertTrue(result.equals(RangeIndex(5, 12)))
+
+        result = index[3:10]
+        self.assertTrue(result.equals(RangeIndex(8, 15)))
+
+        result = index[-5:]
+        self.assertTrue(result.equals(RangeIndex(15, 20)))
+
+        result = index[-5:-2]
+        self.assertTrue(result.equals(RangeIndex(15, 18)))
+
+        result = index[::-1]
+        expected = RangeIndex(19, 4, -1)
+        self.assertTrue(result.equals(expected))
+
+        result = result[::-1]
+        self.assertTrue(result.equals(index))
+
+        result = index[2::2]
+        exp = RangeIndex(7, 20, 2)
+        self.assertTrue(result.equals(exp))
+
+        # with a step
+        index = RangeIndex(5, 41, 2)
+        result = index[2:]
+        self.assertTrue(result.equals(RangeIndex(9, 41, 2)))
+
+        result = index[:7]
+        self.assertTrue(result.equals(RangeIndex(5, 19, 2)))
+
+        result = index[3:10]
+        self.assertTrue(result.equals(RangeIndex(11, 25, 2)))
+
+        result = index[-5:]
+        self.assertTrue(result.equals(RangeIndex(31, 41, 2)))
+
+        result = index[-5:-2]
+        self.assertTrue(result.equals(RangeIndex(31, 37, 2)))
+
+        result = index[::-1]
+        expected = RangeIndex(39, 3, -2)
+        self.assertTrue(result.equals(expected))
+
+        result = result[::-1]
+        self.assertTrue(result.equals(index))
+
+        # corner case
+        index = RangeIndex(0, 1)
+        self.assertTrue(index[:0].equals(RangeIndex(0, 0)))
+
+    def test_insert(self):
+        index = RangeIndex(5, name='bar')
+
+        result = index.insert(2, 'foo')
+        exp = Index([0, 1, 'foo', 2, 3, 4])
+        self.assertTrue(result.equals(exp))
+        self.assertEqual(result.name, 'bar')
+
+    def test_delete(self):
+        index = RangeIndex(5, name='bar')
+        result = index.delete(2)
+        exp = Index([0, 1, 3, 4])
+        self.assertTrue(result.equals(exp))
+        self.assertEqual(result.name, 'bar')
+
+    def test_union(self):
+        pass
+
+    def test_intersection(self):
+        pass
+
+    def test_pickle(self):
+        pass
+
+    def test_equals(self):
+        left = RangeIndex(0, 20)
+
+        self.assertTrue(left.equals(RangeIndex(0, 20)))
+        self.assertFalse(left.equals(RangeIndex(0, 10)))
+        self.assertFalse(left.equals(RangeIndex(0, 20, 2)))
+
+        left = RangeIndex(0, 20, 2)
+        self.assertTrue(left.equals(RangeIndex(0, 20, 2)))
+
 
 class TestMultiIndex(unittest.TestCase):
 

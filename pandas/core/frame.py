@@ -401,7 +401,7 @@ class DataFrame(NDFrame):
                     conv_data, columns = _to_sdict(data, columns)
                     if isinstance(conv_data, dict):
                         if len(conv_data) == 0 and index is None:
-                            index = np.arange(len(data))
+                            index = _default_index(len(data))
                         mgr = self._init_dict(conv_data, index, columns,
                                               dtype=dtype)
                     else:
@@ -876,9 +876,9 @@ class DataFrame(NDFrame):
                     result_index = index
         elif isinstance(data, dict) and len(data) > 0:
             # utilize first element of sdict to get length
-            result_index = np.arange(len(data.values()[0]))
+            result_index = _default_index(len(data.values()[0]))
         else:
-            result_index = np.arange(len(data))
+            result_index = _default_index(len(data))
 
         return cls(sdict, index=result_index, columns=columns)
 
@@ -2505,7 +2505,7 @@ class DataFrame(NDFrame):
                 values = lib.maybe_convert_objects(values)
             return values
 
-        new_index = np.arange(len(new_obj))
+        new_index = _default_index(len(new_obj))
         if isinstance(self.index, MultiIndex):
             if level is not None:
                 if not isinstance(level, (tuple, list)):
@@ -4910,7 +4910,7 @@ def extract_index(data):
                           % (lengths[0], len(index)))
                     raise ValueError(msg)
             else:
-                index = Index(np.arange(lengths[0]))
+                index = _default_index(lengths[0])
 
     return _ensure_index(index)
 

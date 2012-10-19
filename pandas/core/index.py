@@ -1110,7 +1110,7 @@ class Index(np.ndarray):
         new_index : Index
         """
         arr = np.delete(np.asarray(self), loc)
-        return Index(arr)
+        return Index(arr, name=self.name)
 
     def insert(self, loc, item):
         """
@@ -1151,7 +1151,11 @@ class Index(np.ndarray):
         return self.delete(indexer)
 
 
-class Int64Index(Index):
+class IntIndex(object):
+    pass
+
+
+class Int64Index(Index, IntIndex):
 
     _groupby = _algos.groupby_int64
     _arrmap = _algos.arrmap_int64
@@ -1219,7 +1223,10 @@ class Int64Index(Index):
         #     return False
 
         try:
-            return np.array_equal(self, other)
+            if isinstance(other, Index):
+                other = other.values
+
+            return np.array_equal(self.values, other)
         except TypeError:
             # e.g. fails in numpy 1.6 with DatetimeIndex #1681
             return False
@@ -1229,6 +1236,131 @@ class Int64Index(Index):
         return Int64Index(joined, name=name)
 
 
+class RangeIndex(Int64Index):
+    """
+    Compactly represents regular integer range (instead of generating a full
+    array of integers)
+    """
+
+    def __new__(cls, start=None, stop=None, step=None, name=None):
+        if stop is None and step is None:
+            #
+            stop = start
+            start = 0
+
+        if step is None:
+            step = 1
+
+        result = np.array([], dtype=np.int_).view(RangeIndex)
+        result.start = start
+        result.stop = stop
+        result.step = step
+        result.name = name
+
+        return result
+
+    def __array_finalize__(self, obj):
+        if not isinstance(obj, type(self)):
+            # Only relevant if array being created from an Index instance
+            return
+
+        self.start = getattr(obj, 'start', None)
+        self.stop = getattr(obj, 'stop', None)
+        self.step = getattr(obj, 'step', None)
+        self.name = getattr(obj, 'name', None)
+
+    @property
+    def values(self):
+        return np.arange(self.start, self.stop, self.step)
+
+    def __len__(self):
+        return (self.stop - self.start - 1) // self.step + 1
+
+    def __repr__(self):
+        if self.step != 1:
+            return 'RangeIndex(%d, %d, step=%d)' % (self.start, self.stop,
+                                                    self.step)
+        else:
+            return 'RangeIndex(%d, %d)' % (self.start, self.stop)
+
+    def __getslice__(self, i, j):
+        return self.__getitem__(slice(i, j))
+
+    def __getitem__(self, key):
+        if com.is_integer(key):
+            if key >= 0:
+                return self.start + self.step * key
+            else:
+                return self.stop + self.step * key
+        elif isinstance(key, slice):
+            kstart = key.start or 0
+            kstop = self.stop if key.stop is None else key.stop
+            kstep = key.step or 1
+
+            if kstop >= 0:
+                new_stop = min(self.start + kstop * self.step, self.stop)
+            else:
+                new_stop = self.stop + kstop * self.step
+
+            if kstart is None:
+                new_start = self.start
+            else:
+                if kstart >= 0:
+                    new_start = self.start + kstart * self.step
+                else:
+                    new_start = self.step + kstart * self.step
+
+            new_step = self.step * kstep
+            if kstep < 0:
+                return RangeIndex(new_stop - self.step, new_start - self.step,
+                                  new_step, name=self.name)
+            else:
+                return RangeIndex(new_start, new_stop, new_step, name=self.name)
+
+        elif isinstance(key, (list, np.ndarray)):
+            key = np.asarray(key)
+
+            if key.dtype == np.bool_:
+                return Int64Index(self.values[key], name=self.name)
+
+            return np.where(key >= 0, self.start + self.step * key,
+                            self.stop + self.step * key)
+        else: # pragma: no cover
+            raise TypeError('Unhandled getitem type: %s' % type(key))
+
+    def insert(self, loc, item):
+        return Int64Index(self.values, name=self.name).insert(loc, item)
+
+    def delete(self, loc):
+        return Int64Index(self.values, name=self.name).delete(loc)
+
+    def take(self, key):
+        # XXX
+        return self[key]
+
+    def equals(self, other):
+        """
+        Returns True if the indexes are equivalent
+
+        Parameters
+        ----------
+        other : Index
+
+        Returns
+        -------
+        is_equal : True or False
+        """
+        if not isinstance(other, RangeIndex):
+            if isinstance(other, Index):
+                other = other.values
+            return np.array_equal(self.values, other)
+
+        return (self.start == other.start and self.stop == other.stop
+                and self.step == other.step)
+
+    @property
+    def _constructor(self):
+        return RangeIndex
 
 
 class MultiIndex(Index):
