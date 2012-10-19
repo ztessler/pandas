@@ -2432,7 +2432,7 @@ class DataFrame(NDFrame):
                 for i in range(self.index.nlevels):
                     arrays.append(self.index.get_level_values(i))
             else:
-                arrays.append(np.asarray(self.index))
+                arrays.append(self.index.values)
 
         to_remove = []
         for col in keys:

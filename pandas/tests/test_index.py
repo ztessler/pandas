@@ -962,6 +962,10 @@ class TestRangeIndex(unittest.TestCase):
         index = RangeIndex(0, 1)
         self.assertTrue(index[:0].equals(RangeIndex(0, 0)))
 
+    def test_slice_locs(self):
+        index = RangeIndex(0, 2)
+        self.assertEqual(index.slice_locs(0, 3), (0, 2))
+
     def test_insert(self):
         index = RangeIndex(5, name='bar')
 
@@ -978,10 +982,23 @@ class TestRangeIndex(unittest.TestCase):
         self.assertEqual(result.name, 'bar')
 
     def test_union(self):
-        pass
+        result = RangeIndex(4).union(RangeIndex(3))
+        self.assertTrue(result.equals(RangeIndex(4)))
+
+        result = RangeIndex(3).union(RangeIndex(4, 7))
+        exp = Index([0, 1, 2, 4, 5, 6])
+        self.assertTrue(result.equals(exp))
 
     def test_intersection(self):
-        pass
+        result = RangeIndex(4).intersection(RangeIndex(1, 3))
+        self.assertTrue(result.equals(RangeIndex(1, 3)))
+
+    def test_array_arithmetic(self):
+        index = RangeIndex(0, 11)
+
+        result = index // 5
+        expected = index._to_dense() // 5
+        self.assertTrue(result.equals(expected))
 
     def test_pickle(self):
         pass

@@ -560,7 +560,7 @@ class TestMerge(unittest.TestCase):
 
         # smoke test
         joined = left.join(right, on='key', sort=False)
-        self.assert_(np.array_equal(joined.index, range(4)))
+        self.assert_(joined.index.equals(range(4)))
 
     def test_intelligently_handle_join_key(self):
         # #733, be a bit more 1337 about not returning unconsolidated DataFrame

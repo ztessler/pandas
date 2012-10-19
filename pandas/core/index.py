@@ -17,7 +17,7 @@ from pandas.util import py3compat
 __all__ = ['Index']
 
 
-def _indexOp(opname):
+def _index_comp(opname):
     """
     Wrapper function for index comparison operations, to avoid
     code duplication.
@@ -501,12 +501,12 @@ class Index(np.ndarray):
         else:
             return Index(self.view(np.ndarray) + other)
 
-    __eq__ = _indexOp('__eq__')
-    __ne__ = _indexOp('__ne__')
-    __lt__ = _indexOp('__lt__')
-    __gt__ = _indexOp('__gt__')
-    __le__ = _indexOp('__le__')
-    __ge__ = _indexOp('__ge__')
+    __eq__ = _index_comp('__eq__')
+    __ne__ = _index_comp('__ne__')
+    __lt__ = _index_comp('__lt__')
+    __gt__ = _index_comp('__gt__')
+    __le__ = _index_comp('__le__')
+    __ge__ = _index_comp('__ge__')
 
     def __sub__(self, other):
         return self.diff(other)
@@ -1071,6 +1071,7 @@ class Index(np.ndarray):
         -----
         This function assumes that the data is sorted, so use at your own peril
         """
+        values = None
         if start is None:
             beg_slice = 0
         else:
@@ -1095,6 +1096,9 @@ class Index(np.ndarray):
                     end_slice += 1
             except KeyError:
                 if self.is_monotonic:
+                    if values is None:
+                        values = self.values
+
                     end_slice = self.searchsorted(end, side='right')
                 else:
                     raise
@@ -1236,6 +1240,28 @@ class Int64Index(Index, IntIndex):
         return Int64Index(joined, name=name)
 
 
+def _range_comp(opname):
+    """
+    Wrapper function for index comparison operations, to avoid
+    code duplication.
+    """
+    def wrapper(self, other):
+        func = getattr(self.values, opname)
+        result = func(other)
+        return result
+    return wrapper
+
+def _range_arith(opname):
+    """
+    Wrapper function for index comparison operations, to avoid
+    code duplication.
+    """
+    def wrapper(self, other):
+        func = getattr(self._to_dense(), opname)
+        return func(other)
+    return wrapper
+
+
 class RangeIndex(Int64Index):
     """
     Compactly represents regular integer range (instead of generating a full
@@ -1268,6 +1294,30 @@ class RangeIndex(Int64Index):
         self.stop = getattr(obj, 'stop', None)
         self.step = getattr(obj, 'step', None)
         self.name = getattr(obj, 'name', None)
+
+    __eq__ = _range_comp('__eq__')
+    __ne__ = _range_comp('__ne__')
+    __lt__ = _range_comp('__lt__')
+    __gt__ = _range_comp('__gt__')
+    __le__ = _range_comp('__le__')
+    __ge__ = _range_comp('__ge__')
+
+    __add__ = _range_arith('__add__')
+    __sub__ = _range_arith('__sub__')
+    __mul__ = _range_arith('__mul__')
+    __truediv__ = _range_arith('__truediv__')
+    __floordiv__ = _range_arith('__floordiv__')
+    __radd__ = _range_arith('__radd__')
+    __rsub__ = _range_arith('__rsub__')
+    __rmul__ = _range_arith('__rmul__')
+    __rtruediv__ = _range_arith('__rtruediv__')
+    __rfloordiv__ = _range_arith('__rfloordiv__')
+
+    # Python 2 division operators
+    if not py3compat.PY3:
+        __div__ = _range_arith('__div__')
+        __rdiv__ = _range_arith('__rdiv__')
+        __idiv__ = __div__
 
     @property
     def values(self):
@@ -1329,10 +1379,10 @@ class RangeIndex(Int64Index):
             raise TypeError('Unhandled getitem type: %s' % type(key))
 
     def insert(self, loc, item):
-        return Int64Index(self.values, name=self.name).insert(loc, item)
+        return self._to_dense().insert(loc, item)
 
     def delete(self, loc):
-        return Int64Index(self.values, name=self.name).delete(loc)
+        return self._to_dense().delete(loc)
 
     def take(self, key):
         # XXX
@@ -1352,11 +1402,58 @@ class RangeIndex(Int64Index):
         """
         if not isinstance(other, RangeIndex):
             if isinstance(other, Index):
-                other = other.values
+                return other.equals(self._to_dense())
             return np.array_equal(self.values, other)
 
         return (self.start == other.start and self.stop == other.stop
                 and self.step == other.step)
+
+    def searchsorted(self, key, side='left'):
+        return self.values.searchsorted(key, side=side)
+
+    def _to_dense(self):
+        return Int64Index(self.values, name=self.name)
+
+    def union(self, other):
+        """
+        Specialized Index.union for RangeIndex
+        """
+        if not isinstance(other, RangeIndex):
+            return self._to_dense().union(other)
+
+        if self.step == other.step:
+            this = self
+            if self.start > other.start:
+                this, other = other, this
+
+            if this.stop > other.start:
+                return RangeIndex(this.start, max(other.stop, this.stop),
+                                  self.step)
+            else:
+                return self._to_dense().union(other._to_dense())
+        else:
+            return self._to_dense().union(other._to_dense())
+
+    def intersection(self, other):
+        """
+        Specialized Index.intersection for RangeIndex
+        """
+        if not isinstance(other, RangeIndex):
+            return self._to_dense().intersection(other)
+
+        if self.step == other.step:
+            this = self
+            if self.start > other.start:
+                this, other = other, this
+
+            if other.stop <= this.stop:
+                return RangeIndex(other.start, min(this.stop, other.stop),
+                                  self.step)
+            else:
+                return self._to_dense().intersection(other._to_dense())
+        else:
+            return self._to_dense().intersection(other._to_dense())
+
 
     @property
     def _constructor(self):

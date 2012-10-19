@@ -1841,14 +1841,14 @@ class TestDataFrame(unittest.TestCase, CheckIndexing,
 
         # automatic labeling
         frame = DataFrame(mat)
-        self.assert_(np.array_equal(frame.index, range(2)))
-        self.assert_(np.array_equal(frame.columns, range(3)))
+        self.assert_(frame.index.equals(range(2)))
+        self.assert_(frame.columns.equals(range(3)))
 
         frame = DataFrame(mat, index=[1, 2])
-        self.assert_(np.array_equal(frame.columns, range(3)))
+        self.assert_(frame.columns.equals(range(3)))
 
         frame = DataFrame(mat, columns=['A', 'B', 'C'])
-        self.assert_(np.array_equal(frame.index, range(2)))
+        self.assert_(frame.index.equals(range(2)))
 
         # 0-length axis
         frame = DataFrame(np.empty((0, 3)))
@@ -1899,14 +1899,14 @@ class TestDataFrame(unittest.TestCase, CheckIndexing,
 
         # automatic labeling
         frame = DataFrame(mat)
-        self.assert_(np.array_equal(frame.index, range(2)))
-        self.assert_(np.array_equal(frame.columns, range(3)))
+        self.assert_(frame.index.equals(range(2)))
+        self.assert_(frame.columns.equals(range(3)))
 
         frame = DataFrame(mat, index=[1, 2])
-        self.assert_(np.array_equal(frame.columns, range(3)))
+        self.assert_(frame.columns.equals(range(3)))
 
         frame = DataFrame(mat, columns=['A', 'B', 'C'])
-        self.assert_(np.array_equal(frame.index, range(2)))
+        self.assert_(frame.index.equals(range(2)))
 
         # 0-length axis
         frame = DataFrame(ma.masked_all((0, 3)))
@@ -6677,8 +6677,7 @@ class TestDataFrame(unittest.TestCase, CheckIndexing,
         deleveled = self.frame.reset_index()
         self.assert_(np.array_equal(deleveled['index'],
                                     self.frame.index.values))
-        self.assert_(np.array_equal(deleveled.index,
-                                    np.arange(len(deleveled))))
+        self.assert_(deleveled.index.equals(np.arange(len(deleveled))))
 
         # preserve column names
         self.frame.columns.name = 'columns'

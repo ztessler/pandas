@@ -15,10 +15,11 @@ import numpy as np
 import numpy.ma as ma
 
 from pandas.core.common import (isnull, notnull, _is_bool_indexer,
-                                _default_index, _maybe_upcast,
+                                _maybe_upcast,
                                 _asarray_tuplesafe, is_integer_dtype)
 from pandas.core.index import (Index, MultiIndex, InvalidIndexError,
-                               _ensure_index, _handle_legacy_indexes)
+                               _ensure_index, _handle_legacy_indexes,
+                               RangeIndex)
 from pandas.core.indexing import _SeriesIndexer
 from pandas.tseries.index import DatetimeIndex
 from pandas.tseries.period import PeriodIndex, Period
@@ -340,7 +341,7 @@ class Series(np.ndarray, generic.PandasObject):
             return subarr
 
         if index is None:
-            index = _default_index(len(subarr))
+            index = RangeIndex(len(subarr))
 
         # Change the class of the array to be the subclass type.
         if index.is_all_dates:
@@ -363,7 +364,9 @@ class Series(np.ndarray, generic.PandasObject):
             arr = arr.copy()
 
         klass = Series
-        if index.is_all_dates:
+        if index is None:
+            index = RangeIndex(len(arr))
+        elif index.is_all_dates:
             if not isinstance(index, (DatetimeIndex, PeriodIndex)):
                 index = DatetimeIndex(index)
             klass = TimeSeries
@@ -1153,7 +1156,7 @@ copy : boolean, default False
 
     @Substitution(name='standard deviation', shortname='stdev',
                   na_action=_doc_exclude_na, extras='')
-    @Appender(_stat_doc + 
+    @Appender(_stat_doc +
         """
         Normalized by N-1 (unbiased estimator).
         """)
@@ -1166,7 +1169,7 @@ copy : boolean, default False
 
     @Substitution(name='variance', shortname='var',
                   na_action=_doc_exclude_na, extras='')
-    @Appender(_stat_doc + 
+    @Appender(_stat_doc +
         """
         Normalized by N-1 (unbiased estimator).
         """)
