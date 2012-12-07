@@ -788,6 +788,20 @@ class ExcelTests(unittest.TestCase):
 
         os.remove(filename)
 
+    @slow
+    def test_to_excel_large_files(self):
+        _skip_if_no_excelsuite()
+        df = DataFrame([tuple([i for i in range(200)])
+                        for i in range(100)],
+                       columns=["%s" % i for i in range(200)])
+        path = '__%s__.xls' % tm.rands(10)
+        df.to_excel(path)
+
+        try:
+            os.remove(path)
+        except os.error:
+            pass
+
 
 if __name__ == '__main__':
     nose.runmodule(argv=[__file__,'-vvs','-x','--pdb', '--pdb-failure'],
