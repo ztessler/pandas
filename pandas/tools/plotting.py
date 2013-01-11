@@ -274,7 +274,7 @@ def radviz(frame, class_column, ax=None, **kwds):
     if 'norm' in kwds:
         norm = kwds['norm']
     else:
-        norm = Normalize(0, len(classes))
+        norm = Normalize(0, len(classes)+1)
         kwds['norm'] = norm
     if 'cmap' in kwds:
         cmap = kwds['cmap']
