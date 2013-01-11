@@ -236,11 +236,8 @@ def radviz(frame, class_column, ax=None, **kwds):
     import matplotlib.pyplot as plt
     import matplotlib.patches as patches
     import matplotlib.text as text
-    import random
-
-    def random_color(column):
-        random.seed(column)
-        return [random.random() for _ in range(3)]
+    from matplotlib.colors import Normalize
+    import matplotlib.cm as cm
 
     def normalize(series):
         a = min(series)
@@ -274,10 +271,20 @@ def radviz(frame, class_column, ax=None, **kwds):
         to_plot[class_name][0].append(y[0])
         to_plot[class_name][1].append(y[1])
 
-    for class_ in classes:
+    if 'norm' in kwds:
+        norm = kwds['norm']
+    else:
+        norm = Normalize(0, len(classes))
+        kwds['norm'] = norm
+    if 'cmap' in kwds:
+        cmap = kwds['cmap']
+    else:
+        cmap = cm.jet
+        kwds['cmap'] = cmap
+    for i, class_ in enumerate(classes):
         line = ax.scatter(to_plot[class_][0],
                           to_plot[class_][1],
-                          color=random_color(class_),
+                          facecolor=cmap(norm(i))[:3], 
                           label=com.pprint_thing(class_), **kwds)
     ax.legend()
 
